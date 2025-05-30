@@ -1,0 +1,77 @@
+{% assign selected_routes_uppercase = trmnl.plugin_settings.custom_fields_values.lines|join: ', '|upcase %}
+
+<div class="layout layout--col layout--top">
+  <span class="title">Alerts</span>
+  {% assign any_alerts = false %}
+
+  {% for alert in entity %}
+    {% assign route_lowercase = alert.alert.informed_entity[0].route_id|downcase %}
+    
+    {% if trmnl.plugin_settings.custom_fields_values.lines contains route_lowercase %}
+      {% for at in alert.alert.active_period %}
+        {% assign end_time = at.end|default: 99999999999 %}
+  
+        {% if (at.start < trmnl.system.timestamp_utc and trmnl.system.timestamp_utc < end_time) %}
+           {% assign any_alerts = true %}
+            <div class="item">
+              <div class="meta">
+                <span class="index"></span>
+              </div>
+              <div class="content">
+                <span class="title title--small">[{{ alert.alert.informed_entity[0].route_id }}] {{ alert.alert["transit_realtime.mercury_alert"]alert_type }}</span>
+                <span class="description">{{ alert.alert.header_text.translation[0].text|strip }}</span>
+                <div class="flex gap--small">
+                  {% assign alert_time_span = alert.alert["transit_realtime.mercury_alert"]human_readable_active_period.translation[0].text | default: "Unknown end time" %}
+                  <span class="label label--small label--underline">{{ alert_time_span }}</span>
+                </div>
+              </div>
+            </div>
+          
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+  {% endfor %}
+
+  {% if any_alerts == false %}
+     <span class="title title--large clamp--1">No active alerts on {{selected_routes_uppercase}} trains</span>
+          <br>
+  {% endif %}
+
+
+
+
+  <span class="title" style="margin-top:40px;">Scheduled (Next 48 hours)</span>
+  {% for alert in entity %}
+    {% assign route_lowercase = alert.alert.informed_entity[0].route_id|downcase %}
+    
+    {% if trmnl.plugin_settings.custom_fields_values.lines contains route_lowercase %}
+      {% for at in alert.alert.active_period %}
+          
+        {% assign upcoming_end_time = trmnl.system.timestamp_utc|plus: 172800 %}
+
+        {% if (at.end > trmnl.system.timestamp_utc and at.start < upcoming_end_time and alert.alert["transit_realtime.mercury_alert"]alert_type != "Boarding Change") %}
+          {% assign any_alerts = true %}
+          {% assign alert_time_span = alert.alert["transit_realtime.mercury_alert"].human_readable_active_period.translation[0].text | default: "Unknown end time" %}
+
+          <div class="item">
+            <div class="meta">
+              <span class="index"></span>
+            </div>
+            <div class="content">
+              <span class="title title--small">[{{ alert.alert.informed_entity[0].route_id }}] {{ at.start |plus: trmnl.user.utc_offset |date: "%a, %b %d %I:%M %p" }} - {{ at.end |plus: trmnl.user.utc_offset |date: "%a, %b %d %I:%M %p" }}</span>
+              <span class="description"><b>{{ alert.alert["transit_realtime.mercury_alert"].alert_type }}</b> {{alert.alert.header_text.translation[0].text|strip }}</span>
+            </div>
+          </div>
+          {% break %}
+        {% endif %}
+          
+      {% endfor %}
+    {% endif %}
+  {% endfor %}
+</div>
+
+<div class="title_bar">
+  <img class="image" src="/images/plugins/trmnl--render.svg" />
+  <span class="title">Subway Status ({{ selected_routes_uppercase }})</span>
+  <span class="instance">Updated {{ trmnl.system.timestamp_utc | plus: trmnl.user.utc_offset |date: "%a, %b %d %I:%M %p" }}</span>
+</div>
