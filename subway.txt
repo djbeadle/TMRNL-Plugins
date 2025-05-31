@@ -11,7 +11,7 @@
       {% for at in alert.alert.active_period %}
         {% assign end_time = at.end|default: 99999999999 %}
   
-        {% if (at.start < trmnl.system.timestamp_utc and trmnl.system.timestamp_utc < end_time) %}
+        {% if (at.start < trmnl.system.timestamp_utc and trmnl.system.timestamp_utc < end_time and alert.alert["transit_realtime.mercury_alert"]alert_type != "Boarding Change") %}
            {% assign any_alerts = true %}
             <div class="item">
               <div class="meta">
