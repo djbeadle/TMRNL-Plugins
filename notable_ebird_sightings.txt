@@ -1,0 +1,53 @@
+##########
+# Shared #
+##########
+{% template bird_list %}
+
+<div class="list h--full" data-list-limit="true" data-list-hidden-count="true" data-list-max-columns="{{bird_columns}}">
+  {% for d in data %}
+  {% if
+  (trmnl.plugin_settings.custom_fields_values.reviewed_only == "false" or (trmnl.plugin_settings.custom_fields_values.reviewed_only == "true" and d.obsReviewed))
+  and
+  (trmnl.plugin_settings.custom_fields_values.verified_only == "false" or (trmnl.plugin_settings.custom_fields_values.verified_only == "true" and d.obsReviewed))
+  %}
+  <div class="item">
+    <div class="meta">
+      <span class="index">{% if d.howMany > 1 %}{{d.howMany}}{% endif %}</span>
+    </div>
+    <div class="content">
+      <span class="title title--small">
+        <span class="label {% if d.obsValid and d.obsReviewed %}label--inverted{% elsif d.obsReviewed %}label--outline{% endif %}">{{d.comName}}</span>
+      </span>
+      {% if bird_show_location == "true" %}
+      <span class="description">
+        {{d.obsDt|split: '-'|slice: 1}}/{{d.obsDt|split: '-'|slice: 2}}
+        {{d.locName}} 
+      </span>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+  {% endfor %}
+</div>
+{% endtemplate %}
+
+########
+# Full #
+########
+<div class="layout layout--row">
+  <div class="columns h--full">    
+    <div class="column h--full">
+      {% render "bird_list", data: data, trmnl: trmnl, bird_columns: 3, bird_show_location: "true" %}
+    </div>
+  </div>
+</div>
+
+<div class="title_bar">
+  <img class="image" src="https://usetrmnl.com/images/plugins/trmnl--render.svg">
+  <span class="instance">eBird Notable
+    {% if trmnl.plugin_settings.custom_fields_values.reviewed_only == "true" %}reviewed{% endif %}
+    {% if trmnl.plugin_settings.custom_fields_values.reviewed_only == "true" and trmnl.plugin_settings.custom_fields_values.verified_only == "true" %}&{% endif %}
+    {% if trmnl.plugin_settings.custom_fields_values.verified_only == "true" %}verified{% endif %}
+    sightings w/in {{trmnl.plugin_settings.custom_fields_values.dist}}km of {{trmnl.plugin_settings.custom_fields_values.lat| truncate: 7, ""}}, {{trmnl.plugin_settings.custom_fields_values.lng| truncate: 7, ""}} ({{trmnl.plugin_settings.custom_fields_values.back}} days)
+  </span>
+</div>
