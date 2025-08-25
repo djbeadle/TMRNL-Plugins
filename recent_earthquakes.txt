@@ -1,0 +1,192 @@
+##########
+# SHARED #
+##########
+<!-- Leaflet JavaScript -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/masajid390/BeautifyMarker@refs/heads/master/leaflet-beautify-marker-icon.js"></script>
+
+<!-- External CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha512-DxV+EoADOkOygM4IR9yXP8Sb2qwgidEmeqAEmDKIOfPRQZOWbXCzLC6vjbZyy0vPisbH2SyW27+ddLVCN+OMzQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.7/css/bootstrap.min.css" integrity="sha512-fw7f+TcMjTb7bpbLJZlP8g2Y4XcCyFZW8uy8HsRZsH/SwbMw0plKHFHr99DN3l04VsYNwvzicUX/6qurvIxbxw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/masajid390/BeautifyMarker@refs/heads/master/leaflet-beautify-marker-icon.css"  crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+
+{% template earthquake_list %}
+<div class="columns h--full">    
+  <div class="column h--full">
+    <div class="list h--full" data-list-max-columns="{{eq_columns}}">
+      {% for eq in features limit: eq_limit %}
+      {% assign eq_time = eq.properties.time | divided_by: 1000 %}
+      {% assign eq_age = trmnl.system.timestamp_utc| minus: eq_time %}
+      <div class="item {% if eq_age < 86400 %}bg-black text-stroke{% endif %}">
+        <div class="meta">{{forloop.index}}</div>
+        <div class="content">
+          <span class="title title--large">{{ eq_time | date: "%s"| plus: trmnl.user.utc_offset | date: "%a, %-I:%M %p" }} - {{eq.properties.mag}}</span>
+          <span class="title title--small">
+            <span class="label">{{eq.properties.place}}</span>
+          </span>
+        </div>
+
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endtemplate %}
+
+<script>
+  // Skip screen generation... 
+  window.TRMNL_SKIP_SCREEN_GENERATION = true;
+
+  {% assign max_relevant_age = trmnl.plugin_settings.custom_fields_values.skipOldData | plus: 0 %}
+  {% for eq in features %}
+
+  {% assign eq_age = eq.properties.time | divided_by: 1000 %}
+  {% if eq_age < max_relevant_age | times: 3600000 %}
+  // ...Unless we find an earthquake that's less than skipOldData (hours) old in milliseconds
+  window.TRMNL_SKIP_SCREEN_GENERATION = false;
+  {% break %}
+  {% endif %}
+  {% endfor %}
+</script>
+
+<style>
+  .map {
+    height: 100%;
+    width: 50%;
+  }
+</style>
+
+{% template map_javascript %}
+<script>
+  // Initialize map
+  let map = L.map('map', {
+    zoomControl: false,
+    scrollWheelZoom: false,
+    doubleClickZoom: false,
+    boxZoom: true,
+    keyboard: false,
+    dragging: true,
+    maxZoom: 10,
+    attributionControl: false
+  }).setView([0, 0], 3);
+
+  // Add CartoDB Positron tiles (clean without text labels)
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    attribution: 'CartoDB',
+    subdomains: 'abcd',
+    maxZoom: 10,
+    minZoom: 2,
+    className: 'image-dither',
+  }).addTo(map);
+
+
+  function displayMap() {
+    const lat = "{{trmnl.plugin_settings.custom_fields_values.latitude}}";
+    const lng = "{{trmnl.plugin_settings.custom_fields_values.longitude}}";
+
+    map.fitBounds([
+      [{{bbox[1]}}, {{bbox[0]}}],
+      [{{bbox[4]}}, {{bbox[3]}}]
+    ], {padding: [{{trmnl.plugin_settings.custom_fields_values.additionalPadding | plus: 20}},{{ trmnl.plugin_settings.custom_fields_values.additionalPadding | plus: 20 }}]});
+                  }
+
+                  {% for eq in features %}
+                  {% if trmnl.plugin_settings.custom_fields_values.showAdditionalEarthquakes != "yes" and forloop.index > eq_limit  %}
+                  /* SKIPPING! */
+                  {% continue %}
+                  {% endif %}
+                  L.marker([{{eq.geometry.coordinates[1]}}, {{eq.geometry.coordinates[0]}}], {
+                    icon: L.BeautifyIcon.icon({
+                      {% if forloop.index <= eq_limit %} icon: "{{ forloop.index }}", iconShape: "marker" {% else %} iconShape: "rectangle-dot" {% endif %}
+                                                                                                               }),
+                  draggable: false
+                  }).setZIndexOffset({{ eq_limit | minus: forloop.index | times: 10 }}).addTo(map);
+  {% endfor %}             
+
+  // Render the map
+  displayMap();
+</script>
+{% endtemplate %}
+
+
+
+
+
+
+
+########
+# FULL #
+########
+{% assign eq_limit = 7 %}
+
+<div class="layout layout--row layout--top">
+  <div style="width: 50%">
+    {% render "earthquake_list", eq_limit: eq_limit, features: features, metadata: metadata, trmnl: trmnl, eq_columns: 1 %}
+  </div>
+  <div id="map" class="map"></div>
+</div>
+
+<div class="title_bar">
+  <img class="image" src="https://usetrmnl.com/images/plugins/trmnl--render.svg">
+  <span class="title">Recent Earthquakes {{trmnl.plugin_settings.custom_fields_values.label}}</span>
+  <span class="instance">Updated at {{metadata.generated | divided_by: 1000  | date: "%s"| plus: trmnl.user.utc_offset | date: "%-I:%M %p" }}</span>
+</div>
+
+{% render "map_javascript",  eq_limit: eq_limit, features: features, metadata: metadata, trmnl: trmnl, bbox: bbox %}
+
+
+
+
+
+###################
+# HALF HORIZONTAL #
+###################
+{% assign eq_limit = 3 %}
+
+<div class="layout layout--row layout--top">
+  <div style="width: 50%">
+    {% render "earthquake_list",  eq_limit: eq_limit, features: features, metadata: metadata, trmnl: trmnl, eq_columns: 1 %}
+  </div>
+  <div id="map" class="map"></div>
+</div>
+
+<div class="title_bar">
+  <img class="image" src="https://usetrmnl.com/images/plugins/trmnl--render.svg">
+  <span class="title">Recent Earthquakes {{trmnl.plugin_settings.custom_fields_values.label}}</span>
+  <span class="instance">Updated at {{metadata.generated | divided_by: 1000  | date: "%s"| plus: trmnl.user.utc_offset | date: "%-I:%M %p" }}</span>
+</div>
+
+{% render "map_javascript", eq_limit: eq_limit, features: features, metadata: metadata, trmnl: trmnl, bbox: bbox %}
+
+
+
+
+#################
+# HALF VERTICAL #
+#################
+{% assign eq_limit = 3 %}
+
+<div class="layout layout--col layout--top">
+  <div style="height: 40%; width: 100%;">
+    {% render "earthquake_list", eq_limit: eq_limit, features: features, metadata: metadata, trmnl: trmnl, eq_columns: 1 %}
+  </div>
+  <div id="map" class="map" style="width: 100%; height: 60%;"></div>
+</div>
+
+<div class="title_bar">
+  <span class="title">Earthquakes {{trmnl.plugin_settings.custom_fields_values.label}}</span>
+  <span class="instance">{{metadata.generated | divided_by: 1000  | date: "%s"| plus: trmnl.user.utc_offset | date: "%-I:%M %p" }}</span>
+</div>
+
+{% render "map_javascript",  eq_limit: eq_limit, features: features, metadata: metadata, trmnl: trmnl, bbox: bbox %}
+
+
+
+
+
+############
+# QUADRANT #
+############
+{% render "earthquake_list", features: features, metadata: metadata, trmnl: trmnl, eq_columns: 1 %}
