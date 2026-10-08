@@ -53,7 +53,7 @@ def run(x):
     parser = MyHTMLParser()
     # print('feeding')
     #raise Exception(json.dumps(x))
-    contents = requests.get(f"https://partiful.com/explore/nyc").text
+    contents = requests.get(f"https://partiful.com/explore/{x['trmnl']['plugin_settings']['custom_fields_values']['location_name']}").text
     # print(f'contents length {len(contents)}')
     parser.feed(contents)
     print(parser._script_tag_contents)
